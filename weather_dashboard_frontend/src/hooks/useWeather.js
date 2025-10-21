@@ -51,7 +51,7 @@ export default function useWeather() {
           const w = await fetchWeatherFor(loc);
           setWeather(w);
         } catch (e2) {
-          setError(e2.message || 'Failed to load weather');
+          setError(humanizeError(e2));
         }
       } finally {
         setIsLoading(false);
@@ -109,7 +109,7 @@ export default function useWeather() {
       const w = await fetchWeatherFor(item);
       setWeather(w);
     } catch (e) {
-      setError(e.message || 'Failed to load weather for city');
+      setError(humanizeError(e, 'Failed to load weather for city'));
     } finally {
       setIsLoading(false);
     }
@@ -131,7 +131,7 @@ export default function useWeather() {
       const w = await fetchWeatherFor(loc);
       setWeather(w);
     } catch (e) {
-      setError('Unable to get your location.');
+      setError('Unable to get your location. Please allow location access or search a city.');
     } finally {
       setIsLoading(false);
     }
@@ -146,7 +146,7 @@ export default function useWeather() {
       const w = await fetchWeatherFor(location);
       setWeather(w);
     } catch (e) {
-      setError(e.message || 'Retry failed');
+      setError(humanizeError(e, 'Retry failed'));
     } finally {
       setIsLoading(false);
     }
@@ -173,4 +173,24 @@ function getBrowserGeolocation(timeout = 5000) {
     const opts = { enableHighAccuracy: false, timeout, maximumAge: 60000 };
     navigator.geolocation.getCurrentPosition(resolve, reject, opts);
   });
+}
+
+/**
+ * Convert raw errors to more actionable UI messages.
+ */
+function humanizeError(err, fallback = 'Failed to load weather') {
+  const msg = (err && err.message) ? String(err.message) : '';
+  if (/network/i.test(msg) || /Failed to fetch/i.test(msg)) {
+    return 'Network error. Please check your internet connection and try again.';
+  }
+  if (/401/.test(msg) || /invalid api key/i.test(msg)) {
+    return 'OpenWeather API key invalid. Please verify REACT_APP_OPENWEATHER_API_KEY in .env and rebuild.';
+  }
+  if (/429/.test(msg) || /rate limit/i.test(msg)) {
+    return 'Rate limit reached. Please wait a moment and try again.';
+  }
+  if (/OpenWeather API key missing/i.test(msg)) {
+    return 'OpenWeather key is not set. Using fallback provider or set REACT_APP_OPENWEATHER_API_KEY and rebuild.';
+  }
+  return msg || fallback;
 }
