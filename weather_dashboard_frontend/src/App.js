@@ -1,47 +1,58 @@
-import React, { useState, useEffect } from 'react';
-import logo from './logo.svg';
+import React from 'react';
 import './App.css';
+import './index.css';
+import Header from './components/Header';
+import SearchBar from './components/SearchBar';
+import CurrentWeatherCard from './components/CurrentWeatherCard';
+import ForecastGrid from './components/ForecastGrid';
+import Loader from './components/Loader';
+import ErrorBanner from './components/ErrorBanner';
+import useWeather from './hooks/useWeather';
 
-// PUBLIC_INTERFACE
+/**
+ * PUBLIC_INTERFACE
+ * App loads the login-free weather dashboard. It relies on useWeather hook which
+ * selects OpenWeatherMap if REACT_APP_OPENWEATHER_API_KEY is provided via .env,
+ * otherwise falls back to Open‑Meteo + Nominatim (keyless).
+ * To configure OpenWeatherMap, set REACT_APP_OPENWEATHER_API_KEY in your environment.
+ */
 function App() {
-  const [theme, setTheme] = useState('light');
-
-  // Effect to apply theme to document element
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
-
-  // PUBLIC_INTERFACE
-  const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
-  };
+  const {
+    location,
+    weather,
+    isLoading,
+    error,
+    searchText,
+    setSearchText,
+    suggestions,
+    selectSuggestion,
+    locateMe,
+    retry,
+  } = useWeather();
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <button 
-          className="theme-toggle" 
-          onClick={toggleTheme}
-          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        >
-          {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-        </button>
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <p>
-          Current theme: <strong>{theme}</strong>
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="ocean-app">
+      <div className="ocean-gradient" />
+      <Header onLocate={locateMe} />
+      <main className="container">
+        <SearchBar
+          value={searchText}
+          onChange={setSearchText}
+          suggestions={suggestions}
+          onSelect={selectSuggestion}
+        />
+        {isLoading && <Loader label="Fetching weather..." />}
+        {error && <ErrorBanner message={error} onRetry={retry} />}
+        {!isLoading && !error && weather && (
+          <>
+            <CurrentWeatherCard location={location} current={weather.current} />
+            <ForecastGrid daily={weather.daily} />
+          </>
+        )}
+      </main>
+      <footer className="app-footer">
+        <span>Data via {process.env.REACT_APP_OPENWEATHER_API_KEY ? 'OpenWeatherMap' : 'Open‑Meteo & Nominatim'}</span>
+      </footer>
     </div>
   );
 }
