@@ -11,6 +11,20 @@ const ICON_BASE = 'https://openweathermap.org/img/wn';
 const isDev = process.env.NODE_ENV === 'development';
 const OW_BASE = isDev ? '' : OW_API_PROD;
 
+// Emit a single console warning if the key is missing (dev only) to guide setup.
+let didWarnMissingKey = false;
+function warnIfMissingKeyOnce() {
+  const key = process.env.REACT_APP_OPENWEATHER_API_KEY;
+  if (!key && !didWarnMissingKey) {
+    didWarnMissingKey = true;
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[WeatherDashboard] REACT_APP_OPENWEATHER_API_KEY is not set. Falling back to keyless providers (Open‑Meteo + Nominatim). ' +
+      'To enable OpenWeather features, create .env with REACT_APP_OPENWEATHER_API_KEY=your_key and restart the dev server/rebuild.'
+    );
+  }
+}
+
 /**
  * Helper to parse fetch errors with more details.
  */
@@ -37,6 +51,7 @@ async function ensureOk(response, defaultMessage) {
 // PUBLIC_INTERFACE
 export async function owSuggestCities(query, limit = 5) {
   /** Suggest cities using OpenWeather geocoding API. */
+  warnIfMissingKeyOnce();
   const key = process.env.REACT_APP_OPENWEATHER_API_KEY;
   if (!key) {
     throw new Error(
@@ -59,6 +74,7 @@ export async function owSuggestCities(query, limit = 5) {
 // PUBLIC_INTERFACE
 export async function owOneCall(lat, lon) {
   /** Fetch current + daily forecast using One Call API v2.5 (widely available) */
+  warnIfMissingKeyOnce();
   const key = process.env.REACT_APP_OPENWEATHER_API_KEY;
   if (!key) {
     throw new Error(
