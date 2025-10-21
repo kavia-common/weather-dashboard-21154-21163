@@ -26,7 +26,7 @@ REACT_APP_OPENWEATHER_API_KEY=your_openweather_api_key
 ```
 
 Important:
-- Only use `REACT_APP_OPENWEATHER_API_KEY`. Do NOT use `REACT_APP_REACT_APP_OPENWEATHER_API_KEY`.
+- Only use `REACT_APP_OPENWEATHER_API_KEY`. Do NOT use `REACT_APP_REACT_APP_OPENWEATHER_API_KEY` (misnamed; ignored by the code).
 - The app calls `https://api.openweathermap.org` directly; no proxying through the dev server domain or preview host.
 - If the key is missing or invalid, the UI will show a friendly error and a Retry button.
 - Use the in-app "Test OpenWeather" button to validate connectivity with known coordinates; the app logs the computed URL without your key.
@@ -37,14 +37,36 @@ Notes on rate limits:
 
 Never commit real API keys. When the key is absent, the app automatically uses keyless fallback providers.
 
-## Validation checklist
-- App loads and shows the header with “Breezy” and “Locate Me”
-- With `.env` missing: search + forecast work using Open‑Meteo, no crashes
-- With a valid OpenWeather key: search + forecast use OpenWeather
-- Trigger “Test OpenWeather”: see a diagnostic result and a sanitized URL in the console
-- If you get 401 from One Call, set `REACT_APP_OPENWEATHER_USE_ONECALL3=true` and retry
-- Inputs and buttons show visible focus outlines when navigating with the keyboard
-- Optional: last selected city is remembered across reloads
+## Validation
+To quickly verify the app wiring and provider mode:
+- Use the "🔎 Test OpenWeather" button on the home screen to run a self-check. It shows whether an API key is detected, the selected One Call version, attempts, and sanitized request info.
+- Look at the footer label: “Data via OpenWeatherMap” confirms OpenWeather mode is active; “Open‑Meteo & Nominatim” confirms fallback mode.
+- With `.env` missing: search, current, and 7‑day forecast should work via Open‑Meteo without errors.
+- With a valid `REACT_APP_OPENWEATHER_API_KEY`: searches use OpenWeather Geocoding and weather comes from One Call (v2.5 by default, or v3.0 if forced/required).
+- If you see a 401 for One Call, set `REACT_APP_OPENWEATHER_USE_ONECALL3=true` and retry. The app also auto-retries v3.0 on 401 and falls back to split endpoints if still unauthorized.
+- Accessibility: tab through inputs and buttons to confirm visible focus outlines are present.
+
+## Error handling summary
+The UI shows clear, actionable messages and a Retry button where appropriate:
+- 401/403 (unauthorized): “Invalid or unauthorized OpenWeather API key … If your account requires One Call 3.0, set REACT_APP_OPENWEATHER_USE_ONECALL3=true.”
+- 429 (rate limit): “Rate limit exceeded. Please wait a moment and try again.”
+- Network errors: “Network error. Please check your internet connection and try again.”
+- Missing key: “OpenWeather key is not set. Using fallback provider or set REACT_APP_OPENWEATHER_API_KEY and rebuild.”
+- One Call flow: on 401, the app retries with v3.0; if still 401, it falls back to separate current/forecast endpoints.
+
+## Debouncing and persistence
+- Search suggestions are debounced by ~350 ms to reduce API load.
+- The last selected location is persisted in `localStorage` and restored on next visit, when available.
+
+## Troubleshooting
+- Invalid Host header when running `npm start` (preview/tunnel):
+  - This project adds dev-only settings to allow preview hosts. See “Development server host check” below. This does not affect production builds.
+- CORS or network issues:
+  - The app makes direct requests to `https://api.openweathermap.org`. Ensure your environment allows outbound HTTPS and that requests are not being redirected through a dev server or preview host.
+- One Call v3.0 requirement:
+  - Some OpenWeather accounts must use One Call v3.0. Set `REACT_APP_OPENWEATHER_USE_ONECALL3=true` in `.env` and restart `npm start`, or rebuild for production.
+- Misnamed env var:
+  - If you accidentally set `REACT_APP_REACT_APP_OPENWEATHER_API_KEY`, it is ignored by code. Use `REACT_APP_OPENWEATHER_API_KEY`.
 
 ## Features
 - Header with brand and “Locate Me”
