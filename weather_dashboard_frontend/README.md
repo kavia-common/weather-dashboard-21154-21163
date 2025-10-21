@@ -14,18 +14,37 @@ This app shows current weather and a 7-day forecast with city search and geoloca
 Open http://localhost:3000. Search a city or click “Locate Me”.
 
 ## Environment (.env)
-Create `.env` in the project root (same folder as package.json) to enable OpenWeatherMap:
+Use the provided `.env.example` as a template:
+```
+cp .env.example .env
+```
+Then edit `.env` (same folder as package.json) to enable OpenWeatherMap:
 ```
 REACT_APP_OPENWEATHER_API_KEY=your_openweather_api_key
 # Optional: some accounts must use One Call 3.0
 # REACT_APP_OPENWEATHER_USE_ONECALL3=true
 ```
+
 Important:
 - Only use `REACT_APP_OPENWEATHER_API_KEY`. Do NOT use `REACT_APP_REACT_APP_OPENWEATHER_API_KEY`.
 - The app calls `https://api.openweathermap.org` directly; no proxying through the dev server domain or preview host.
 - If the key is missing or invalid, the UI will show a friendly error and a Retry button.
 - Use the in-app "Test OpenWeather" button to validate connectivity with known coordinates; the app logs the computed URL without your key.
-Note: Never commit real API keys. In absence of the key, the app automatically uses the keyless fallback.
+
+Notes on rate limits:
+- Respect OpenWeather rate limits. If you hit 429, the app surfaces a clear message to retry later.
+- If your account requires One Call v3.0, set `REACT_APP_OPENWEATHER_USE_ONECALL3=true` in `.env`. The app will otherwise default to v2.5 but automatically retries v3.0 if it receives a 401.
+
+Never commit real API keys. When the key is absent, the app automatically uses keyless fallback providers.
+
+## Validation checklist
+- App loads and shows the header with “Breezy” and “Locate Me”
+- With `.env` missing: search + forecast work using Open‑Meteo, no crashes
+- With a valid OpenWeather key: search + forecast use OpenWeather
+- Trigger “Test OpenWeather”: see a diagnostic result and a sanitized URL in the console
+- If you get 401 from One Call, set `REACT_APP_OPENWEATHER_USE_ONECALL3=true` and retry
+- Inputs and buttons show visible focus outlines when navigating with the keyboard
+- Optional: last selected city is remembered across reloads
 
 ## Features
 - Header with brand and “Locate Me”
@@ -34,7 +53,7 @@ Note: Never commit real API keys. In absence of the key, the app automatically u
 - 7-day forecast cards with min/max and icons
 - Loading state and clear errors for 401/403/429/network with Retry
 - Automatic retry path: on 401 from One Call, app retries with One Call v3.0; if still 401, falls back to separate current/forecast endpoints
-- Optional: remembers last selected city using browser memory (can be extended with localStorage)
+- Optional: remembers last selected city using browser localStorage
 
 ## Styling
 Playful Ocean Professional theme with soft gradient background, rounded cards, and animated hovers. See `src/index.css` and `src/App.css`.

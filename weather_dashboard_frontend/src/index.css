@@ -35,6 +35,19 @@ a { color: inherit; }
   padding: 16px;
 }
 
+/* Accessibility: visible focus outlines only when keyboard focusing */
+:focus-visible {
+  outline: 3px solid rgba(139, 92, 246, 0.6); /* secondary color */
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Ensure buttons/inputs show strong focus */
+button:focus-visible,
+input:focus-visible {
+  box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.35); /* primary glow */
+}
+
 .ocean-app {
   min-height: 100%;
   position: relative;

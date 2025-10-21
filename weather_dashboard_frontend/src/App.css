@@ -83,6 +83,21 @@
   border-color: rgba(236,72,153,.35);
   background: #fff;
 }
+.search-input:focus-visible {
+  border-color: rgba(139,92,246,.6);
+  box-shadow: 0 0 0 3px rgba(139,92,246,.25);
+}
+
+.suggestion-item:focus-visible {
+  outline: 2px solid rgba(139,92,246,.6);
+  outline-offset: -2px;
+  background: #f5f3ff;
+}
+
+.btn:focus-visible {
+  outline: 3px solid rgba(236,72,153,.55);
+  outline-offset: 2px;
+}
 
 .suggestions {
   position: absolute;

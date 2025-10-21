@@ -27,12 +27,40 @@ export default function useWeather() {
   const debounceRef = useRef(null);
   const provider = useMemo(() => (hasOWKey ? 'openweather' : 'openmeteo'), []);
 
-  // First load: try geolocation; fallback to default city.
+  // First load: try to restore last selection, else geolocation; fallback to default city.
   useEffect(() => {
     (async () => {
       try {
         setIsLoading(true);
         setError('');
+
+        // Optional persistence: try to restore last selected location from localStorage
+        let restored = null;
+        try {
+          const raw = localStorage.getItem('breezy:lastLocation');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (
+              parsed &&
+              typeof parsed.lat === 'number' &&
+              typeof parsed.lon === 'number' &&
+              typeof parsed.name === 'string'
+            ) {
+              restored = parsed;
+            }
+          }
+        } catch {
+          // ignore storage errors
+        }
+
+        if (restored) {
+          setLocation(restored);
+          const w = await fetchWeatherFor(restored);
+          setWeather(w);
+          return;
+        }
+
+        // No restore: attempt geolocation
         const geo = await getBrowserGeolocation(5000);
         const loc = {
           name: 'Your location',
@@ -106,6 +134,8 @@ export default function useWeather() {
     setError('');
     try {
       setLocation(item);
+      // Persist selection
+      try { localStorage.setItem('breezy:lastLocation', JSON.stringify(item)); } catch {}
       const w = await fetchWeatherFor(item);
       setWeather(w);
     } catch (e) {
@@ -128,6 +158,8 @@ export default function useWeather() {
         lon: geo.coords.longitude,
       };
       setLocation(loc);
+      // Persist selection
+      try { localStorage.setItem('breezy:lastLocation', JSON.stringify(loc)); } catch {}
       const w = await fetchWeatherFor(loc);
       setWeather(w);
     } catch (e) {
