@@ -2,8 +2,14 @@
  * OpenWeather provider helpers.
  * Reads REACT_APP_OPENWEATHER_API_KEY from env (do not hardcode). Ensure you set it in .env.
  */
-const OW_API = 'https://api.openweathermap.org';
+const OW_API_PROD = 'https://api.openweathermap.org';
 const ICON_BASE = 'https://openweathermap.org/img/wn';
+
+// Build base differently for dev vs prod:
+// - DEV: empty origin + absolute path starting with / so CRA proxy forwards to https://api.openweathermap.org
+// - PROD: full absolute origin to call OpenWeather directly from the built app
+const isDev = process.env.NODE_ENV === 'development';
+const OW_BASE = isDev ? '' : OW_API_PROD;
 
 /**
  * Helper to parse fetch errors with more details.
@@ -37,7 +43,8 @@ export async function owSuggestCities(query, limit = 5) {
       'OpenWeather API key missing. Set REACT_APP_OPENWEATHER_API_KEY in .env to enable OpenWeather.'
     );
   }
-  const url = `${OW_API}/geo/1.0/direct?q=${encodeURIComponent(query)}&limit=${limit}&appid=${key}`;
+  const path = `/geo/1.0/direct?q=${encodeURIComponent(query)}&limit=${limit}&appid=${key}`;
+  const url = `${OW_BASE}${path}`;
   const r = await fetch(url);
   await ensureOk(r, 'Failed to fetch suggestions');
   const data = await r.json();
@@ -58,7 +65,8 @@ export async function owOneCall(lat, lon) {
       'OpenWeather API key missing. Set REACT_APP_OPENWEATHER_API_KEY in .env to enable OpenWeather.'
     );
   }
-  const url = `${OW_API}/data/2.5/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly,alerts&units=metric&appid=${key}`;
+  const path = `/data/2.5/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly,alerts&units=metric&appid=${key}`;
+  const url = `${OW_BASE}${path}`;
   const r = await fetch(url);
   await ensureOk(r, 'Failed to fetch weather');
   const data = await r.json();
