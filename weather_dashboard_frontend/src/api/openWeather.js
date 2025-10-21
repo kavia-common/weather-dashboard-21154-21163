@@ -245,14 +245,53 @@ export async function owSelfCheck() {
   if (!key) {
     return { ok: false, reason: 'missing_key' };
   }
-  const url = buildOWUrl(getOneCallPath(37.7749, -122.4194, key));
-  try {
-    const r = await fetch(url);
-    if (!r.ok) {
-      return { ok: false, status: r.status };
+
+  const lat = 37.7749;
+  const lon = -122.4194;
+
+  // Decide initial version from env
+  const preferV3Env = String(process.env.REACT_APP_OPENWEATHER_USE_ONECALL3 || '').toLowerCase() === 'true';
+
+  // Helper to run a single attempt
+  const attempt = async (useV3) => {
+    const path = getOneCallPath(lat, lon, key, useV3);
+    const url = buildOWUrl(path);
+    try {
+      const r = await fetch(url);
+      if (r.ok) return { ok: true, version: useV3 ? '3.0' : '2.5' };
+      // Capture body and message for diagnostics
+      let body = '';
+      try {
+        const text = await r.text();
+        if (text) {
+          try {
+            const j = JSON.parse(text);
+            body = j && j.message ? j.message : text;
+          } catch {
+            body = text;
+          }
+        }
+      } catch {
+        // ignore
+      }
+      return { ok: false, status: r.status, version: useV3 ? '3.0' : '2.5', body: body || undefined };
+    } catch {
+      return { ok: false, reason: 'network', version: useV3 ? '3.0' : '2.5' };
     }
-    return { ok: true };
-  } catch {
-    return { ok: false, reason: 'network' };
+  };
+
+  // First attempt: env-selected (default 2.5 unless env forces 3.0)
+  const first = await attempt(preferV3Env);
+  if (first.ok) return first;
+
+  // If unauthorized on first attempt and we didn't already use v3, retry with v3
+  if (first.status === 401 && !preferV3Env) {
+    const second = await attempt(true);
+    if (second.ok) return second;
+    // Still failing: return detailed info so UI/logs can surface it
+    return { ok: false, status: second.status || first.status, reason: second.reason, version: '3.0', body: second.body || first.body };
   }
+
+  // Return the first failure details
+  return first;
 }
