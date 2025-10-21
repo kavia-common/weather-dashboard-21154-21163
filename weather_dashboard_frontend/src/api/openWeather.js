@@ -242,8 +242,19 @@ export async function owOneCall(lat, lon) {
 export async function owSelfCheck() {
   /** This is a diagnostic helper, not used in UI by default. */
   const key = process.env.REACT_APP_OPENWEATHER_API_KEY;
-  if (!key) {
-    return { ok: false, reason: 'missing_key' };
+  const misnamedKeyPresent = !!process.env.REACT_APP_REACT_APP_OPENWEATHER_API_KEY;
+  const apiKeyPresent = !!key;
+
+  // If key missing, report immediately with env context
+  if (!apiKeyPresent) {
+    return {
+      ok: false,
+      reason: 'missing_key',
+      apiKeyPresent,
+      misnamedKeyPresent,
+      origin: OW_API_ORIGIN,
+      useOneCall3Env: String(process.env.REACT_APP_OPENWEATHER_USE_ONECALL3 || '').toLowerCase() === 'true',
+    };
   }
 
   const lat = 37.7749;
@@ -252,14 +263,19 @@ export async function owSelfCheck() {
   // Decide initial version from env
   const preferV3Env = String(process.env.REACT_APP_OPENWEATHER_USE_ONECALL3 || '').toLowerCase() === 'true';
 
+  const attempts = [];
+
   // Helper to run a single attempt
   const attempt = async (useV3) => {
+    const version = useV3 ? '3.0' : '2.5';
     const path = getOneCallPath(lat, lon, key, useV3);
     const url = buildOWUrl(path);
     try {
       const r = await fetch(url);
-      if (r.ok) return { ok: true, version: useV3 ? '3.0' : '2.5' };
-      // Capture body and message for diagnostics
+      if (r.ok) {
+        attempts.push({ version, status: r.status, ok: true });
+        return { ok: true, version, status: r.status };
+      }
       let body = '';
       try {
         const text = await r.text();
@@ -274,24 +290,66 @@ export async function owSelfCheck() {
       } catch {
         // ignore
       }
-      return { ok: false, status: r.status, version: useV3 ? '3.0' : '2.5', body: body || undefined };
+      attempts.push({ version, status: r.status, ok: false, body: body || undefined });
+      return { ok: false, version, status: r.status, body: body || undefined };
     } catch {
-      return { ok: false, reason: 'network', version: useV3 ? '3.0' : '2.5' };
+      attempts.push({ version, ok: false, reason: 'network' });
+      return { ok: false, version, reason: 'network' };
     }
   };
 
   // First attempt: env-selected (default 2.5 unless env forces 3.0)
   const first = await attempt(preferV3Env);
-  if (first.ok) return first;
+  if (first.ok) {
+    return {
+      ok: true,
+      version: first.version,
+      status: first.status,
+      origin: OW_API_ORIGIN,
+      apiKeyPresent,
+      misnamedKeyPresent,
+      useOneCall3Env: preferV3Env,
+      attempts,
+    };
+  }
 
   // If unauthorized on first attempt and we didn't already use v3, retry with v3
   if (first.status === 401 && !preferV3Env) {
     const second = await attempt(true);
-    if (second.ok) return second;
+    if (second.ok) {
+      return {
+        ok: true,
+        version: second.version,
+        status: second.status,
+        origin: OW_API_ORIGIN,
+        apiKeyPresent,
+        misnamedKeyPresent,
+        useOneCall3Env: preferV3Env,
+        attempts,
+      };
+    }
     // Still failing: return detailed info so UI/logs can surface it
-    return { ok: false, status: second.status || first.status, reason: second.reason, version: '3.0', body: second.body || first.body };
+    return {
+      ok: false,
+      status: second.status || first.status,
+      reason: second.reason || 'unauthorized',
+      version: '3.0',
+      origin: OW_API_ORIGIN,
+      apiKeyPresent,
+      misnamedKeyPresent,
+      useOneCall3Env: preferV3Env,
+      body: second.body || first.body,
+      attempts,
+    };
   }
 
-  // Return the first failure details
-  return first;
+  // Return the first failure details (non-401 or when env already forced v3)
+  return {
+    ...first,
+    origin: OW_API_ORIGIN,
+    apiKeyPresent,
+    misnamedKeyPresent,
+    useOneCall3Env: preferV3Env,
+    attempts,
+  };
 }

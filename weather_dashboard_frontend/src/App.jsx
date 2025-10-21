@@ -58,9 +58,35 @@ function App() {
             🔎 Test OpenWeather
           </button>
           {diag && (
-            <span style={{ marginLeft: 8, color: diag.ok ? '#10B981' : '#EF4444' }}>
-              {diag.ok ? 'Self-check OK' : `Self-check failed: ${diag.reason || diag.status || 'error'}`}
-            </span>
+            <div style={{ marginTop: 8, fontSize: 13, lineHeight: 1.5 }}>
+              <div style={{ color: diag.ok ? '#10B981' : '#EF4444', fontWeight: 600 }}>
+                {diag.ok ? 'Self-check OK' : `Self-check failed: ${diag.reason || diag.status || 'error'}`}
+              </div>
+              <div>Key present: {String(diag.apiKeyPresent ?? true)}</div>
+              {typeof diag.misnamedKeyPresent !== 'undefined' && (
+                <div>Misnamed var present (REACT_APP_REACT_APP_OPENWEATHER_API_KEY): {String(diag.misnamedKeyPresent)}</div>
+              )}
+              {typeof diag.useOneCall3Env !== 'undefined' && (
+                <div>USE_ONECALL3 (env): {String(diag.useOneCall3Env)}</div>
+              )}
+              {diag.origin && <div>Origin: {diag.origin}</div>}
+              {diag.version && <div>Selected version: {diag.version}</div>}
+              {diag.status && <div>Status: {diag.status}</div>}
+              {diag.body && <div>Response: {diag.body}</div>}
+              {Array.isArray(diag.attempts) && diag.attempts.length > 0 && (
+                <div style={{ marginTop: 4 }}>
+                  Attempts:
+                  <ul style={{ margin: '4px 0 0 16px' }}>
+                    {diag.attempts.map((a, i) => (
+                      <li key={i}>
+                        v{a.version} - {a.ok ? 'ok' : `fail${a.status ? ` (${a.status})` : a.reason ? ` (${a.reason})` : ''}`}
+                        {a.body ? ` - ${a.body}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
