@@ -6,6 +6,13 @@ This app shows current weather and a 7-day forecast with city search and geoloca
 - Falls back to Open‑Meteo + Nominatim (keyless) if not set
 - Mobile-first, playful "Ocean Professional" styling
 
+## Quick start
+- Install: `npm install`
+- Run dev server: `npm start`
+- Build: `npm run build`
+
+Open http://localhost:3000. Search a city or click “Locate Me”.
+
 ## Environment (.env)
 Create `.env` in the project root (same folder as package.json) to enable OpenWeatherMap:
 ```
@@ -18,6 +25,17 @@ Important:
 - The app calls `https://api.openweathermap.org` directly; no proxying through the dev server domain.
 - If the key is missing or invalid, the UI will show a friendly error and a Retry button.
 Note: Never commit real API keys. In absence of the key, the app automatically uses the keyless fallback.
+
+## Features
+- Header with brand and “Locate Me”
+- Search bar with suggestions (OpenWeather Geocoding if key is set; Nominatim otherwise)
+- Current weather card: city, temperature, description, humidity, wind
+- 7-day forecast cards with min/max and icons
+- Loading state and clear errors for 401/403/429/network with Retry
+- Optional: remembers last selected city using browser memory (can be extended with localStorage)
+
+## Styling
+Playful Ocean Professional theme with soft gradient background, rounded cards, and animated hovers. See `src/index.css` and `src/App.css`.
 
 ## Development server host check (preview environments)
 

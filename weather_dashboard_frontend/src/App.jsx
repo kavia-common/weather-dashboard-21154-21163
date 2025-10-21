@@ -4,17 +4,20 @@ import './index.css';
 import Header from './components/Header';
 import SearchBar from './components/SearchBar';
 import CurrentWeatherCard from './components/CurrentWeatherCard';
-import ForecastGrid from './components/ForecastGrid';
+import ForecastList from './components/ForecastList';
 import Loader from './components/Loader';
 import ErrorBanner from './components/ErrorBanner';
 import useWeather from './hooks/useWeather';
 
 /**
  * PUBLIC_INTERFACE
- * App loads the login-free weather dashboard. It relies on useWeather hook which
- * selects OpenWeatherMap if REACT_APP_OPENWEATHER_API_KEY is provided via .env,
- * otherwise falls back to Open‑Meteo + Nominatim (keyless).
- * To configure OpenWeatherMap, set REACT_APP_OPENWEATHER_API_KEY in your environment.
+ * App
+ * This is the single-page weather dashboard. It renders:
+ * - Header with "Locate Me"
+ * - Search bar with suggestions
+ * - Current weather card and 7-day forecast
+ * Data comes from useWeather(), which selects OpenWeather (if key exists)
+ * or falls back to Open‑Meteo.
  */
 function App() {
   const {
@@ -46,7 +49,7 @@ function App() {
         {!isLoading && !error && weather && (
           <>
             <CurrentWeatherCard location={location} current={weather.current} />
-            <ForecastGrid daily={weather.daily} />
+            <ForecastList daily={weather.daily} />
           </>
         )}
       </main>
