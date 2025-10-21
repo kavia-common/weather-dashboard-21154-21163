@@ -10,7 +10,13 @@ This app shows current weather and a 7-day forecast with city search and geoloca
 Create `.env` in the project root (same folder as package.json) to enable OpenWeatherMap:
 ```
 REACT_APP_OPENWEATHER_API_KEY=your_openweather_api_key
+# Optional: some accounts must use One Call 3.0
+# REACT_APP_OPENWEATHER_USE_ONECALL3=true
 ```
+Important:
+- Only use `REACT_APP_OPENWEATHER_API_KEY`. Do NOT use `REACT_APP_REACT_APP_OPENWEATHER_API_KEY`.
+- The app calls `https://api.openweathermap.org` directly; no proxying through the dev server domain.
+- If the key is missing or invalid, the UI will show a friendly error and a Retry button.
 Note: Never commit real API keys. In absence of the key, the app automatically uses the keyless fallback.
 
 ## Development server host check (preview environments)

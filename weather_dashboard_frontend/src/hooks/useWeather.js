@@ -180,16 +180,16 @@ function getBrowserGeolocation(timeout = 5000) {
  */
 function humanizeError(err, fallback = 'Failed to load weather') {
   const msg = (err && err.message) ? String(err.message) : '';
-  if (/network/i.test(msg) || /Failed to fetch/i.test(msg)) {
+  if (/network/i.test(msg) || /Failed to fetch/i.test(msg) || /Network error/i.test(msg)) {
     return 'Network error. Please check your internet connection and try again.';
   }
-  if (/401/.test(msg) || /invalid api key/i.test(msg)) {
-    return 'OpenWeather API key invalid. Please verify REACT_APP_OPENWEATHER_API_KEY in .env and rebuild.';
+  if (/401/.test(msg) || /403/.test(msg) || /invalid api key/i.test(msg) || /unauthorized/i.test(msg)) {
+    return 'Invalid or unauthorized OpenWeather API key. Set REACT_APP_OPENWEATHER_API_KEY in .env and restart the dev server/rebuild.';
   }
   if (/429/.test(msg) || /rate limit/i.test(msg)) {
-    return 'Rate limit reached. Please wait a moment and try again.';
+    return 'Rate limit exceeded. Please wait a moment and try again.';
   }
-  if (/OpenWeather API key missing/i.test(msg)) {
+  if (/OpenWeather API key missing/i.test(msg) || /not set/i.test(msg)) {
     return 'OpenWeather key is not set. Using fallback provider or set REACT_APP_OPENWEATHER_API_KEY and rebuild.';
   }
   return msg || fallback;
