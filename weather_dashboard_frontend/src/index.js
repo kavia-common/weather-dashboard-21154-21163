@@ -6,9 +6,8 @@ import App from './App';
 /**
  * Entry point: renders the Weather Dashboard app.
  * Emits warnings in dev console if OpenWeather key is misconfigured or missing.
+ * Note: Only REACT_APP_OPENWEATHER_API_KEY is used; a misnamed REACT_APP_REACT_APP_OPENWEATHER_API_KEY will be ignored.
  */
-// Emit a clear warning once if the OpenWeather API key is not configured or if a misnamed key is found.
-// This does not break the app; it will fall back to the keyless provider.
 (function warnMissingOpenWeatherKeyOnce() {
   if (process.env.REACT_APP_REACT_APP_OPENWEATHER_API_KEY) {
     // eslint-disable-next-line no-console

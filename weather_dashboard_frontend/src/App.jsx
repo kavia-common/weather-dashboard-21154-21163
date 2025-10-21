@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './App.css';
 import './index.css';
 import Header from './components/Header';
@@ -8,6 +8,7 @@ import ForecastList from './components/ForecastList';
 import Loader from './components/Loader';
 import ErrorBanner from './components/ErrorBanner';
 import useWeather from './hooks/useWeather';
+import { owSelfCheck } from './api/openWeather';
 
 /**
  * PUBLIC_INTERFACE
@@ -33,6 +34,12 @@ function App() {
     retry,
   } = useWeather();
 
+  const [diag, setDiag] = useState(null);
+  const runSelfCheck = async () => {
+    const res = await owSelfCheck();
+    setDiag(res);
+  };
+
   return (
     <div className="ocean-app">
       <div className="ocean-gradient" />
@@ -44,6 +51,19 @@ function App() {
           suggestions={suggestions}
           onSelect={selectSuggestion}
         />
+
+        {/* Developer-only diagnostics button (safe to keep visible) */}
+        <div style={{ marginBottom: 8 }}>
+          <button className="btn" onClick={runSelfCheck} aria-label="Run OpenWeather self-check">
+            🔎 Test OpenWeather
+          </button>
+          {diag && (
+            <span style={{ marginLeft: 8, color: diag.ok ? '#10B981' : '#EF4444' }}>
+              {diag.ok ? 'Self-check OK' : `Self-check failed: ${diag.reason || diag.status || 'error'}`}
+            </span>
+          )}
+        </div>
+
         {isLoading && <Loader label="Fetching weather..." />}
         {error && <ErrorBanner message={error} onRetry={retry} />}
         {!isLoading && !error && weather && (

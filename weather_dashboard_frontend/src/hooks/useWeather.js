@@ -184,13 +184,17 @@ function humanizeError(err, fallback = 'Failed to load weather') {
     return 'Network error. Please check your internet connection and try again.';
   }
   if (/401/.test(msg) || /403/.test(msg) || /invalid api key/i.test(msg) || /unauthorized/i.test(msg)) {
-    return 'Invalid or unauthorized OpenWeather API key. Set REACT_APP_OPENWEATHER_API_KEY in .env and restart the dev server/rebuild.';
+    return 'Invalid or unauthorized OpenWeather API key. Set REACT_APP_OPENWEATHER_API_KEY in .env and restart the dev server/rebuild. If your account requires One Call 3.0, set REACT_APP_OPENWEATHER_USE_ONECALL3=true.';
   }
   if (/429/.test(msg) || /rate limit/i.test(msg)) {
     return 'Rate limit exceeded. Please wait a moment and try again.';
   }
   if (/OpenWeather API key missing/i.test(msg) || /not set/i.test(msg)) {
     return 'OpenWeather key is not set. Using fallback provider or set REACT_APP_OPENWEATHER_API_KEY and rebuild.';
+  }
+  // Provide hint if One Call fails but we might still have fallback data paths
+  if (/Failed to fetch weather/.test(msg)) {
+    return 'Unable to fetch weather from One Call. Ensure API key permissions; the app may retry with One Call 3.0 or fallback to separate endpoints.';
   }
   return msg || fallback;
 }

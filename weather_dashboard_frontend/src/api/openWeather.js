@@ -56,21 +56,83 @@ async function ensureOk(response, defaultMessage) {
 
 /**
  * Build a full absolute URL to OpenWeather with provided path (starting with /).
+ * Logs an info line with the computed URL (without the API key) to aid diagnostics.
+ * Also validates that we are targeting the correct api host, not a preview/dev domain.
  */
 function buildOWUrl(pathAndQuery) {
-  return `${OW_API_ORIGIN}${pathAndQuery}`;
+  const url = `${OW_API_ORIGIN}${pathAndQuery}`;
+  try {
+    const u = new URL(url);
+    // eslint-disable-next-line no-console
+    console.info('[WeatherDashboard][OpenWeather] Requesting:', `${u.origin}${u.pathname}${u.search.replace(/appid=[^&]*/,'appid=***')}`);
+    if (u.origin !== OW_API_ORIGIN) {
+      // eslint-disable-next-line no-console
+      console.warn('[WeatherDashboard][OpenWeather] Unexpected origin for request! Expected https://api.openweathermap.org but got', u.origin);
+    }
+  } catch {
+    // ignore URL parse issues
+  }
+  return url;
 }
 
 /**
  * Version switcher: Some accounts must use One Call 3.0. Prefer 2.5 but allow opting into 3.0 via env.
  * Set REACT_APP_OPENWEATHER_USE_ONECALL3=true to force v3.0 endpoint.
  */
-function getOneCallPath(lat, lon, key) {
-  const useV3 = String(process.env.REACT_APP_OPENWEATHER_USE_ONECALL3 || '').toLowerCase() === 'true';
+function getOneCallPath(lat, lon, key, preferV3 = false) {
+  const useV3Env = String(process.env.REACT_APP_OPENWEATHER_USE_ONECALL3 || '').toLowerCase() === 'true';
+  const useV3 = preferV3 || useV3Env;
   if (useV3) {
     return `/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly,alerts&units=metric&appid=${key}`;
   }
   return `/data/2.5/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly,alerts&units=metric&appid=${key}`;
+}
+
+/**
+ * Fallback using current weather and 7-day forecast (v2.5 endpoints) if One Call is unauthorized for an account.
+ */
+async function owCurrentAndForecast(lat, lon, key) {
+  const currentUrl = buildOWUrl(`/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${key}`);
+  const forecastUrl = buildOWUrl(`/data/2.5/forecast/daily?lat=${lat}&lon=${lon}&cnt=7&units=metric&appid=${key}`);
+
+  let r1, r2;
+  try {
+    r1 = await fetch(currentUrl);
+  } catch {
+    throw new Error('Network error while fetching current weather');
+  }
+  await ensureOk(r1, 'Failed to fetch current weather');
+  const c = await r1.json();
+
+  try {
+    r2 = await fetch(forecastUrl);
+  } catch {
+    throw new Error('Network error while fetching forecast');
+  }
+  await ensureOk(r2, 'Failed to fetch forecast');
+  const f = await r2.json();
+
+  const cw = c.weather?.[0] || {};
+  return {
+    current: {
+      temp: typeof c.main?.temp === 'number' ? Math.round(c.main.temp) : undefined,
+      description: cw.description || '',
+      icon: cw.icon ? `${ICON_BASE}/${cw.icon}@2x.png` : null,
+      humidity: c.main?.humidity,
+      windSpeed: c.wind?.speed,
+      windDeg: c.wind?.deg,
+    },
+    daily: Array.isArray(f.list) ? f.list.map((d) => {
+      const w = d.weather?.[0] || {};
+      return {
+        date: new Date(d.dt * 1000).toISOString(),
+        min: typeof d.temp?.min === 'number' ? Math.round(d.temp.min) : undefined,
+        max: typeof d.temp?.max === 'number' ? Math.round(d.temp.max) : undefined,
+        icon: w.icon ? `${ICON_BASE}/${w.icon}@2x.png` : null,
+        description: w.description || '',
+      };
+    }) : [],
+  };
 }
 
 // PUBLIC_INTERFACE
@@ -105,7 +167,7 @@ export async function owSuggestCities(query, limit = 5) {
 export async function owOneCall(lat, lon) {
   /**
    * Fetch current + daily forecast using One Call API.
-   * Defaults to v2.5; if REACT_APP_OPENWEATHER_USE_ONECALL3=true, uses v3.0.
+   * Defaults to v2.5; on 401 tries v3.0; on further 401 falls back to current/forecast split endpoints.
    */
   warnIfMissingKeyOnce();
   const key = process.env.REACT_APP_OPENWEATHER_API_KEY;
@@ -114,14 +176,36 @@ export async function owOneCall(lat, lon) {
       'OpenWeather API key missing. Set REACT_APP_OPENWEATHER_API_KEY in .env to enable OpenWeather.'
     );
   }
-  const path = getOneCallPath(lat, lon, key);
-  const url = buildOWUrl(path);
+
+  // attempt One Call (env-selected version)
+  let path = getOneCallPath(lat, lon, key);
+  let url = buildOWUrl(path);
   let r;
   try {
     r = await fetch(url);
-  } catch (e) {
+  } catch {
     throw new Error('Network error while fetching weather');
   }
+
+  if (r.status === 401) {
+    // eslint-disable-next-line no-console
+    console.warn('[WeatherDashboard][OpenWeather] Received 401 for One Call. Retrying with One Call v3.0...');
+    // try v3 explicitly
+    path = getOneCallPath(lat, lon, key, true);
+    url = buildOWUrl(path);
+    try {
+      r = await fetch(url);
+    } catch {
+      throw new Error('Network error while fetching weather (v3 retry)');
+    }
+    if (r.status === 401) {
+      // eslint-disable-next-line no-console
+      console.warn('[WeatherDashboard][OpenWeather] One Call v3.0 also returned 401. Falling back to current + daily forecast endpoints.');
+      // final fallback to separate endpoints (v2.5)
+      return await owCurrentAndForecast(lat, lon, key);
+    }
+  }
+
   await ensureOk(r, 'Failed to fetch weather');
   const data = await r.json();
   const current = data.current || {};
@@ -153,6 +237,7 @@ export async function owOneCall(lat, lon) {
 /**
  * PUBLIC_INTERFACE
  * Quick self-check: performs a sample request with known coordinates to validate connectivity.
+ * Logs the computed URL (without key).
  */
 export async function owSelfCheck() {
   /** This is a diagnostic helper, not used in UI by default. */
@@ -160,7 +245,7 @@ export async function owSelfCheck() {
   if (!key) {
     return { ok: false, reason: 'missing_key' };
   }
-  const url = buildOWUrl(getOneCallPath(37.7749, -122.4194, key)); // San Francisco
+  const url = buildOWUrl(getOneCallPath(37.7749, -122.4194, key));
   try {
     const r = await fetch(url);
     if (!r.ok) {

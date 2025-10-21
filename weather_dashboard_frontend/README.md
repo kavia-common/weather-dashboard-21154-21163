@@ -22,8 +22,9 @@ REACT_APP_OPENWEATHER_API_KEY=your_openweather_api_key
 ```
 Important:
 - Only use `REACT_APP_OPENWEATHER_API_KEY`. Do NOT use `REACT_APP_REACT_APP_OPENWEATHER_API_KEY`.
-- The app calls `https://api.openweathermap.org` directly; no proxying through the dev server domain.
+- The app calls `https://api.openweathermap.org` directly; no proxying through the dev server domain or preview host.
 - If the key is missing or invalid, the UI will show a friendly error and a Retry button.
+- Use the in-app "Test OpenWeather" button to validate connectivity with known coordinates; the app logs the computed URL without your key.
 Note: Never commit real API keys. In absence of the key, the app automatically uses the keyless fallback.
 
 ## Features
@@ -32,6 +33,7 @@ Note: Never commit real API keys. In absence of the key, the app automatically u
 - Current weather card: city, temperature, description, humidity, wind
 - 7-day forecast cards with min/max and icons
 - Loading state and clear errors for 401/403/429/network with Retry
+- Automatic retry path: on 401 from One Call, app retries with One Call v3.0; if still 401, falls back to separate current/forecast endpoints
 - Optional: remembers last selected city using browser memory (can be extended with localStorage)
 
 ## Styling
